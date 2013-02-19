@@ -50,7 +50,7 @@ module ActiveRecord
       end
 
       # Retrieve the raw java.sql.Connection object.
-      # The unwrap parameter is useful if an attempt to unwrap a pooled (JNDI) 
+      # The unwrap parameter is useful if an attempt to unwrap a pooled (JNDI)
       # connection should be made - to really return the native (SQL) object.
       def jdbc_connection(unwrap = nil)
         java_connection = raw_connection.connection
@@ -166,7 +166,7 @@ module ActiveRecord
               if name == :primary_key
                 next
               end
-              if val[:name].downcase == tname.downcase && 
+              if val[:name].downcase == tname.downcase &&
                   ( val[:limit].nil? || val[:limit].to_i == limit )
                 return name, limit
               end
@@ -204,19 +204,19 @@ module ActiveRecord
       end
 
       if ActiveRecord::VERSION::MAJOR < 3
-        
+
         def jdbc_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])  # :nodoc:
           insert_sql(sql, name, pk, id_value, sequence_name, binds)
         end
-        
+
         def jdbc_update(sql, name = nil, binds = []) # :nodoc:
           execute(sql, name, binds)
         end
-        
+
         def jdbc_select_all(sql, name = nil, binds = []) # :nodoc:
           select(sql, name, binds)
         end
-        
+
         # Allow query caching to work even when we override alias_method_chain'd methods
         alias_chained_method :select_all, :query_cache, :jdbc_select_all
         alias_chained_method :update, :query_dirty, :jdbc_update
@@ -226,14 +226,14 @@ module ActiveRecord
         def select_one(sql, name = nil)
           select(sql, name).first
         end
-        
+
       end
 
       def jdbc_columns(table_name, name = nil)
         @connection.columns(table_name.to_s)
       end
       alias_chained_method :columns, :query_cache, :jdbc_columns
-      
+
       # Executes +sql+ statement in the context of this connection using
       # +binds+ as the bind substitutes.  +name+ is logged along with
       # the executed +sql+ statement.
@@ -261,11 +261,11 @@ module ActiveRecord
       def exec_update(sql, name, binds) # :nodoc:
         exec_query(sql, name, binds)
       end
-      
+
       if ActiveRecord::VERSION::MAJOR < 3 # 2.3.x
-        
+
       # NOTE: 2.3 log(sql, name) while does not like `name == nil`
-      
+
       # Executes the SQL statement in the context of this connection.
       def execute(sql, name = nil, binds = [])
         sql = to_sql(sql, binds)
@@ -278,9 +278,9 @@ module ActiveRecord
 
       else
       #elsif ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR == 0
-      
+
       # NOTE: 3.0 log(sql, name) allow `name == nil` (handles `name ||= "SQL"`)
-      
+
       # Executes the SQL statement in the context of this connection.
       def execute(sql, name = nil, binds = [])
         sql = to_sql(sql, binds)
@@ -293,7 +293,7 @@ module ActiveRecord
 
       # NOTE: 3.1 log(sql, name = "SQL", binds = []) `name == nil` is fine
       # TODO skip logging the binds (twice) until prepared-statement support
-      
+
       #else
       end
 
@@ -301,10 +301,10 @@ module ActiveRecord
       # even if we define a new execute method. Instead of mixing in a new
       # execute, an _execute should be mixed in.
       def _execute(sql, name = nil)
-        @connection.execute(sql)
+        ActiveRecord::Result.new(@connection.columns(table_name.to_s), @connection.execute(sql))
       end
       private :_execute
-      
+
       # Returns an array of record hashes with the column names as keys and
       # column values as values.
       # @note on AR-3.2 expects "only" 2 arguments `select(sql, name = nil)`
@@ -312,7 +312,7 @@ module ActiveRecord
       def select(*args)
         execute(*args)
       end
-      
+
       def select_rows(sql, name = nil)
         rows = []
         select(sql, name).each {|row| rows << row.values }
@@ -367,7 +367,7 @@ module ActiveRecord
       end
 
       if ActiveRecord::VERSION::MAJOR >= 3
-        
+
       # Converts an arel AST to SQL
       def to_sql(arel, binds = [])
         if arel.respond_to?(:ast)
@@ -381,9 +381,9 @@ module ActiveRecord
           sql.gsub('?') { quote(*copy.shift.reverse) }
         end
       end
-      
+
       else # AR-2.3 no #to_sql method
-        
+
       # Substitutes SQL bind (?) parameters
       def to_sql(sql, binds = [])
         sql = sql.send(:to_sql) if sql.respond_to?(:to_sql)
@@ -391,11 +391,11 @@ module ActiveRecord
         copy = binds.dup
         sql.gsub('?') { quote(*copy.shift.reverse) }
       end
-        
+
       end
-      
+
       protected
- 
+
       def translate_exception(e, message)
         puts e.backtrace if $DEBUG || ENV['DEBUG']
         super
@@ -404,9 +404,9 @@ module ActiveRecord
       def last_inserted_id(result)
         result
       end
-      
+
       private
-      
+
       # #deprecated no longer used
       def substitute_binds(sql, binds = [])
         sql = extract_sql(sql)
@@ -422,9 +422,9 @@ module ActiveRecord
       def extract_sql(obj)
         obj.respond_to?(:to_sql) ? obj.send(:to_sql) : obj
       end
-      
+
       protected
-      
+
       def self.select?(sql)
         JdbcConnection::select?(sql)
       end

@@ -11,7 +11,7 @@ module ArJdbc
     include TSqlMethods
 
     @@_lob_callback_added = nil
-    
+
     def self.extended(base)
       unless @@_lob_callback_added
         ActiveRecord::Base.class_eval do
@@ -21,8 +21,8 @@ module ArJdbc
               next if value.nil? || (value == '')
 
               connection.write_large_object(
-                column.type == :binary, column.name, 
-                self.class.table_name, self.class.primary_key, 
+                column.type == :binary, column.name,
+                self.class.table_name, self.class.primary_key,
                 quote_value(id), value
               )
             end
@@ -32,7 +32,7 @@ module ArJdbc
         ActiveRecord::Base.after_save :after_save_with_mssql_lob
         @@_lob_callback_added = true
       end
-      
+
       if ( version = base.sqlserver_version ) == '2000'
         extend LimitHelpers::SqlServer2000AddLimitOffset
       else
@@ -51,7 +51,7 @@ module ArJdbc
 
     def self.arel2_visitors(config)
       require 'arel/visitors/sql_server'
-      visitors = config[:sqlserver_version] == '2000' ? 
+      visitors = config[:sqlserver_version] == '2000' ?
         ::Arel::Visitors::SQLServer2000 : ::Arel::Visitors::SQLServer
       { 'mssql' => visitors, 'jdbcmssql' => visitors, 'sqlserver' => visitors }
     end
@@ -237,7 +237,7 @@ module ArJdbc
     end
 
     ADAPTER_NAME = 'MSSQL'
-    
+
     def adapter_name # :nodoc:
       ADAPTER_NAME
     end
@@ -360,19 +360,19 @@ module ArJdbc
     def table_exists?(name)
       !! ( jdbc_columns(name) rescue nil )
     end
-    
+
     SKIP_COLUMNS_TABLE_NAMES_RE = /^information_schema\./i # :nodoc:
-    
+
     def columns(table_name, name = nil)
-      # It's possible for table_name to be an empty string, or nil, if something 
-      # attempts to issue SQL which doesn't involve a table. 
+      # It's possible for table_name to be an empty string, or nil, if something
+      # attempts to issue SQL which doesn't involve a table.
       # IE. "SELECT 1" or "SELECT * FROM someFunction()".
       return [] if table_name.blank?
-      
+
       table_name = unquote_table_name(table_name)
 
       return [] if table_name =~ SKIP_COLUMNS_TABLE_NAMES_RE
-      
+
       unless (@table_columns ||= {})[table_name]
         @table_columns[table_name] = super
         @table_columns[table_name].each do |column|
@@ -396,7 +396,7 @@ module ArJdbc
     def set_identity_insert(table_name, enable = true)
       execute "SET IDENTITY_INSERT #{table_name} #{enable ? 'ON' : 'OFF'}"
     rescue Exception => e
-      raise ActiveRecord::ActiveRecordError, "IDENTITY_INSERT could not be turned" + 
+      raise ActiveRecord::ActiveRecordError, "IDENTITY_INSERT could not be turned" +
             " #{enable ? 'ON' : 'OFF'} for table #{table_name} due : #{e.inspect}"
     end
 
@@ -406,7 +406,7 @@ module ArJdbc
       end
       nil
     end
-    
+
     def query_requires_identity_insert?(sql)
       table_name = get_table_name(sql)
       id_column = identity_column(table_name)
@@ -415,7 +415,7 @@ module ArJdbc
         return table_name if insert_columns.include?(id_column)
       end
     end
-    
+
     def determine_order_clause(sql)
       return $1 if sql =~ /ORDER BY (.*)$/
       table_name = get_table_name(sql)
@@ -425,7 +425,7 @@ module ArJdbc
     def determine_primary_key(table_name)
       primary_key = columns(table_name).detect { |column| column.primary || column.identity }
       return primary_key.name if primary_key
-      # Look for an id column and return it, 
+      # Look for an id column and return it,
       # without changing case, to cover DBs with a case-sensitive collation :
       columns(table_name).each { |column| return column.name if column.name =~ /^id$/i }
       # Give up and provide something which is going to crash almost certainly
@@ -439,12 +439,12 @@ module ArJdbc
     def reset_column_information
       @table_columns = nil if defined? @table_columns
     end
-    
+
     private
-    
+
     def _execute(sql, name = nil)
       # Match the start of the SQL to determine appropriate behavior.
-      # Be aware of multi-line SQL which might begin with 'create stored_proc' 
+      # Be aware of multi-line SQL which might begin with 'create stored_proc'
       # and contain 'insert into ...' lines.
       # TODO test and refactor using `self.class.insert?(sql)` etc
       # NOTE: ignoring comment blocks prior to the first statement ?!
@@ -452,19 +452,19 @@ module ArJdbc
         if query_requires_identity_insert?(sql)
           table_name = get_table_name(sql)
           with_identity_insert_enabled(table_name) do
-            @connection.execute_insert(sql)
+            ActiveRecord::Result.new(@connection.columns(table_name.to_s),@connection.execute_insert(sql))
           end
         else
-          @connection.execute_insert(sql)
+          ActiveRecord::Result.new(@connection.columns(table_name.to_s),@connection.execute_insert(sql))
         end
       elsif sql.lstrip =~ /\A\(?\s*(select|show)/i # self.class.select?(sql)
         sql = repair_special_columns(sql)
-        @connection.execute_query(sql)
+        ActiveRecord::Result.new(@connection.columns(table_name.to_s),@connection.execute_query(sql))
       else # sql.lstrip =~ /\A(create|exec)/i
-        @connection.execute_update(sql)
+        ActiveRecord::Result.new(@connection.columns(table_name.to_s),@connection.execute_update(sql))
       end
     end
-    
+
     def repair_special_columns(sql)
       qualified_table_name = get_table_name(sql, true)
       special_columns = get_special_columns(qualified_table_name)
@@ -482,11 +482,11 @@ module ArJdbc
       end
       special
     end
-    
+
     def sqlserver_2000?
       sqlserver_version <= '2000'
     end
-    
+
   end
 end
 
